@@ -52,7 +52,6 @@ func TestInspector(t *testing.T) {
 			t.Error("request modification not applied")
 		}
 	})
-
 }
 
 // Mock implementations for testing

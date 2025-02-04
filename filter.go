@@ -36,7 +36,7 @@ func (c *ConnFilter) Read(b []byte) (n int, err error) {
 
 // NewConnFilter creates a new ConnFilter that replaces occurrences of target strings with replacement strings in the data read from the connection.
 // It returns an error if the lengths of target and replacement slices are not equal.
-func NewConnFilter(parentConn net.Conn, targets []string, replacements []string) (net.Conn, error) {
+func NewConnFilter(parentConn net.Conn, targets, replacements []string) (net.Conn, error) {
 	if len(targets) != len(replacements) {
 		return nil, ErrInvalidFilter
 	}
