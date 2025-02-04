@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"time"
 )
 
 // Common errors returned by the inspector.
@@ -29,21 +28,21 @@ type ResponseCallback func(*http.Response) error
 
 // Config contains configuration options for the HTTP inspector.
 type Config struct {
-	OnRequest      RequestCallback  // Called for each request
-	OnResponse     ResponseCallback // Called for each response
-	ReadTimeout    time.Duration    // Timeout for reading HTTP messages
-	ModifyTimeout  time.Duration    // Timeout for modification callbacks
-	MaxHeaderBytes int              // Maximum size of HTTP headers
-	MaxBodyBytes   int64            // Maximum size of HTTP body
+	OnRequest  RequestCallback  // Called for each request
+	OnResponse ResponseCallback // Called for each response
 }
+
+// DefaultRequestCallback is a no-op request callback.
+func DefaultRequestCallback(*http.Request) error { return nil }
+
+// DefaultResponseCallback is a no-op response callback.
+func DefaultResponseCallback(*http.Response) error { return nil }
 
 // DefaultConfig returns a Config with reasonable defaults.
 func DefaultConfig() Config {
 	return Config{
-		ReadTimeout:    30 * time.Second,
-		ModifyTimeout:  5 * time.Second,
-		MaxHeaderBytes: 1 << 20, // 1MB
-		MaxBodyBytes:   1 << 26, // 64MB
+		OnRequest:  DefaultRequestCallback,
+		OnResponse: DefaultResponseCallback,
 	}
 }
 
