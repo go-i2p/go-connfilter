@@ -25,7 +25,6 @@ func TestInspector(t *testing.T) {
 			resp.Header.Set("X-Modified", "true")
 			return nil
 		},
-		LoggingEnabled: true,
 	}
 
 	inspector := New(listener, config)

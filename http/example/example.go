@@ -27,7 +27,6 @@ func main() {
 			log.Printf("Response status: %s", resp.Status)
 			return nil
 		},
-		LoggingEnabled: true,
 	}
 
 	inspector := httpinspector.New(listener, config)

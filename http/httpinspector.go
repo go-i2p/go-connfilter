@@ -31,7 +31,6 @@ type ResponseCallback func(*http.Response) error
 type Config struct {
 	OnRequest      RequestCallback  // Called for each request
 	OnResponse     ResponseCallback // Called for each response
-	LoggingEnabled bool             // Enable debug logging
 	ReadTimeout    time.Duration    // Timeout for reading HTTP messages
 	ModifyTimeout  time.Duration    // Timeout for modification callbacks
 	MaxHeaderBytes int              // Maximum size of HTTP headers
