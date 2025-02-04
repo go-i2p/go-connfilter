@@ -5,7 +5,6 @@ package httpinspector
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -153,9 +152,6 @@ func (c *inspectedConn) Write(b []byte) (int, error) {
 
 // handleHTTPRequest processes incoming HTTP requests.
 func (c *inspectedConn) handleHTTPRequest(b []byte) (int, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), c.config.ReadTimeout)
-	defer cancel()
-
 	// Peek to verify HTTP request
 	peek, err := c.reader.Peek(4)
 	if err != nil {
@@ -191,9 +187,6 @@ func (c *inspectedConn) handleHTTPRequest(b []byte) (int, error) {
 
 // handleHTTPResponse processes outgoing HTTP responses.
 func (c *inspectedConn) handleHTTPResponse(b []byte) (int, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), c.config.ReadTimeout)
-	defer cancel()
-
 	// Parse the response
 	resp, err := http.ReadResponse(bufio.NewReader(bytes.NewReader(b)), nil)
 	if err != nil {

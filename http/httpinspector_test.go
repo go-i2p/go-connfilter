@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestInspector(t *testing.T) {
@@ -78,4 +79,39 @@ type mockConn struct {
 	readPos  int
 }
 
-// Implement net.Conn interface methods for mockConn...
+func (m *mockConn) Close() error {
+	return nil
+}
+
+func (m *mockConn) Read(b []byte) (n int, err error) {
+	if m.readPos >= len(m.readData) {
+		return 0, io.EOF
+	}
+	n = copy(b, m.readData[m.readPos:])
+	m.readPos += n
+	return n, nil
+}
+
+func (m *mockConn) Write(b []byte) (n int, err error) {
+	return len(b), nil
+}
+
+func (m *mockConn) LocalAddr() net.Addr {
+	return &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 8080}
+}
+
+func (m *mockConn) RemoteAddr() net.Addr {
+	return &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 8080}
+}
+
+func (m *mockConn) SetDeadline(t time.Time) error {
+	return nil
+}
+
+func (m *mockConn) SetReadDeadline(t time.Time) error {
+	return nil
+}
+
+func (m *mockConn) SetWriteDeadline(t time.Time) error {
+	return nil
+}
