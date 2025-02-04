@@ -8,13 +8,16 @@ import (
 
 var ErrInvalidFilter = errors.New("target and replacement must have the same length")
 
-type connFilter struct {
+type ConnFilter struct {
 	net.Conn
 	targets      []string
 	replacements []string
 }
 
-func (c *connFilter) Read(b []byte) (n int, err error) {
+// Read reads data from the underlying connection and replaces all occurrences of target strings
+// with their corresponding replacement strings. The replacements are made sequentially for each
+// target-replacement pair. The modified data is then copied back to the provided buffer.
+func (c *ConnFilter) Read(b []byte) (n int, err error) {
 	n, err = c.Conn.Read(b)
 	if err != nil {
 		return n, err
@@ -31,13 +34,13 @@ func (c *connFilter) Read(b []byte) (n int, err error) {
 	return buffer.Len(), nil
 }
 
-// NewConnFilter creates a new connFilter that replaces occurrences of target strings with replacement strings in the data read from the connection.
+// NewConnFilter creates a new ConnFilter that replaces occurrences of target strings with replacement strings in the data read from the connection.
 // It returns an error if the lengths of target and replacement slices are not equal.
 func NewConnFilter(parentConn net.Conn, targets []string, replacements []string) (net.Conn, error) {
 	if len(targets) != len(replacements) {
 		return nil, ErrInvalidFilter
 	}
-	return &connFilter{
+	return &ConnFilter{
 		Conn:         parentConn,
 		targets:      targets,
 		replacements: replacements,
