@@ -9,7 +9,7 @@ import (
 var ErrInvalidRegexFilter = errors.New("invalid regex filter")
 
 type RegexConnFilter struct {
-	net.Conn
+	FunctionConnFilter
 	match string
 }
 
@@ -26,9 +26,43 @@ func (c *RegexConnFilter) Read(b []byte) (n int, err error) {
 }
 
 // NewRegexConnFilter creates a new RegexConnFilter that replaces occurrences of target regex with empty strings in the data read from the connection.
+// target regex is c.match
+func (c *RegexConnFilter) ReadFilter(b []byte) ([]byte, error) {
+	if c.match == "" {
+		return b, nil
+	}
+
+	// Create a new bytes buffer
+	var buffer bytes.Buffer
+
+	// Write the modified data to the buffer, with regex matches removed
+	buffer.Write(bytes.ReplaceAll(b, []byte(c.match), []byte("")))
+
+	return buffer.Bytes(), nil
+}
+
+// WriteFilter creates a new RegexConnFilter that replaces occurrences of target regex with empty strings in the data read from the connection.
+// target regex is c.match
+func (c *RegexConnFilter) WriteFilter(b []byte) ([]byte, error) {
+	if c.match == "" {
+		return b, nil
+	}
+
+	// Create a new bytes buffer
+	var buffer bytes.Buffer
+
+	// Write the modified data to the buffer, with regex matches removed
+	buffer.Write(bytes.ReplaceAll(b, []byte(c.match), []byte("")))
+
+	return buffer.Bytes(), nil
+}
+
+// NewRegexConnFilter creates a new RegexConnFilter that replaces occurrences of target regex with empty strings in the data read from the connection.
 // It returns an error if the lengths of target and replacement slices are not equal.
 func NewRegexConnFilter(parentConn net.Conn, regex string) (net.Conn, error) {
 	return &RegexConnFilter{
-		Conn: parentConn,
+		FunctionConnFilter: FunctionConnFilter{
+			Conn: parentConn,
+		},
 	}, nil
 }

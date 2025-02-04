@@ -6,18 +6,19 @@ import (
 	"log"
 	"net"
 	"strings"
+	"sync"
 )
 
 type defaultLogger struct{}
 
 // Debug implements Logger.
 func (d *defaultLogger) Debug(format string, args ...interface{}) {
-	log.Printf("DBG:"+format, args)
+	log.Printf("DBG:"+format, args...)
 }
 
 // Error implements Logger.
 func (d *defaultLogger) Error(format string, args ...interface{}) {
-	log.Printf("ERR:"+format, args)
+	log.Printf("ERR:"+format, args...)
 }
 
 // New creates a new IRC inspector wrapping an existing listener
@@ -30,6 +31,7 @@ func New(listener net.Listener, config Config) *Inspector {
 		listener: listener,
 		config:   config,
 		filters:  make([]Filter, 0),
+		mu:       sync.RWMutex{},
 	}
 }
 
@@ -92,12 +94,14 @@ func (c *ircConn) Read(b []byte) (n int, err error) {
 func (c *ircConn) Write(b []byte) (n int, err error) {
 	if c.writer == nil {
 		c.writer = bufio.NewWriter(c.Conn)
+		defer c.writer.Flush()
 	}
-
 	msg, err := parseMessage(string(b))
 	if err != nil {
 		return c.writer.Write(b)
 	}
+
+	defer c.writer.Flush()
 
 	if err := c.inspector.processMessage(msg); err != nil {
 		c.inspector.config.Logger.Error("process error: %v", err)
@@ -147,6 +151,20 @@ func (i *Inspector) AddFilter(filter Filter) {
 	i.filters = append(i.filters, filter)
 }
 
+// parseNumeric converts a 3-character IRC command string to its numeric equivalent.
+// It returns an error if the command length is not exactly 3 characters.
+func parseNumeric(command string) (int, error) {
+	if len(command) != 3 {
+		return 0, fmt.Errorf("invalid command length")
+	}
+	for _, char := range command {
+		if char < '0' || char > '9' {
+			return 0, fmt.Errorf("command contains non-numeric characters")
+		}
+	}
+	return int(command[0]-'0')*100 + int(command[1]-'0')*10 + int(command[2]-'0'), nil
+}
+
 func (i *Inspector) processMessage(msg *Message) error {
 	i.mu.RLock()
 	defer i.mu.RUnlock()
@@ -167,7 +185,7 @@ func (i *Inspector) processMessage(msg *Message) error {
 
 	// Process filters
 	for _, filter := range i.filters {
-		if matchesFilter(msg, filter) {
+		if filter.Command == "" || filter.Command == msg.Command {
 			if err := filter.Callback(msg); err != nil {
 				return err
 			}

@@ -34,6 +34,16 @@ func (c *ConnFilter) Read(b []byte) (n int, err error) {
 	return buffer.Len(), nil
 }
 
+// Write writes the data to the underlying connection after replacing all occurrences of target strings
+// with their corresponding replacement strings. The replacements are made sequentially for each
+// target-replacement pair.
+func (c *ConnFilter) Write(b []byte) (n int, err error) {
+	for i := range c.targets {
+		b = bytes.ReplaceAll(b, []byte(c.targets[i]), []byte(c.replacements[i]))
+	}
+	return c.Conn.Write(b)
+}
+
 // NewConnFilter creates a new ConnFilter that replaces occurrences of target strings with replacement strings in the data read from the connection.
 // It returns an error if the lengths of target and replacement slices are not equal.
 func NewConnFilter(parentConn net.Conn, targets, replacements []string) (net.Conn, error) {

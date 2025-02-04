@@ -2,6 +2,7 @@ package ircinspector
 
 import (
 	"net"
+	"strings"
 	"sync"
 )
 
@@ -12,6 +13,21 @@ type Message struct {
 	Command  string
 	Params   []string
 	Trailing string
+}
+
+func (m *Message) String() string {
+	var parts []string
+	if m.Prefix != "" {
+		parts = append(parts, ":"+m.Prefix)
+	}
+	parts = append(parts, m.Command)
+	if len(m.Params) > 0 {
+		parts = append(parts, strings.Join(m.Params, " "))
+	}
+	if m.Trailing != "" {
+		parts = append(parts, ":"+m.Trailing)
+	}
+	return strings.Join(parts, " ") + "\r\n"
 }
 
 // Filter defines criteria for message filtering
