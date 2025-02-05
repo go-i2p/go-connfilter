@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"net"
+	"regexp"
 )
 
 var ErrInvalidRegexFilter = errors.New("invalid regex filter")
@@ -31,14 +32,10 @@ func (c *RegexConnFilter) ReadFilter(b []byte) ([]byte, error) {
 	if c.match == "" {
 		return b, nil
 	}
+	re := regexp.MustCompile(c.match)
+	s := re.ReplaceAllString(string(b), ``)
 
-	// Create a new bytes buffer
-	var buffer bytes.Buffer
-
-	// Write the modified data to the buffer, with regex matches removed
-	buffer.Write(bytes.ReplaceAll(b, []byte(c.match), []byte("")))
-
-	return buffer.Bytes(), nil
+	return []byte(s), nil
 }
 
 // WriteFilter creates a new RegexConnFilter that replaces occurrences of target regex with empty strings in the data read from the connection.
@@ -47,14 +44,10 @@ func (c *RegexConnFilter) WriteFilter(b []byte) ([]byte, error) {
 	if c.match == "" {
 		return b, nil
 	}
+	re := regexp.MustCompile(c.match)
+	s := re.ReplaceAllString(string(b), ``)
 
-	// Create a new bytes buffer
-	var buffer bytes.Buffer
-
-	// Write the modified data to the buffer, with regex matches removed
-	buffer.Write(bytes.ReplaceAll(b, []byte(c.match), []byte("")))
-
-	return buffer.Bytes(), nil
+	return []byte(s), nil
 }
 
 // NewRegexConnFilter creates a new RegexConnFilter that replaces occurrences of target regex with empty strings in the data read from the connection.
