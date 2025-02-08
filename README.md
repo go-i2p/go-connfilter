@@ -27,3 +27,6 @@ Specific Filters
  - `OnMessage func(*Message) error`
  - `OnNumeric func(int, *Message) error`
 
+### LICENSE
+
+MIT License
