@@ -1,13 +1,22 @@
+// go-connfilter/irc/ircinspector.go
 package ircinspector
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"log"
 	"net"
 	"strings"
 	"sync"
 )
+
+// The limit includes the line ending.
+const ircMaxLineLength = 8192
+
+// ErrLineTooLong means the connection sent an oversized IRC line.
+// The caller should close the connection after receiving this error.
+var ErrLineTooLong = errors.New("irc: line exceeds maximum length")
 
 type defaultLogger struct{}
 
@@ -61,34 +70,76 @@ func (i *Inspector) Addr() net.Addr {
 type ircConn struct {
 	net.Conn
 	inspector *Inspector
-	reader    *bufio.Reader
-	writer    *bufio.Writer
+
+	readMu  sync.Mutex
+	reader  *bufio.Reader
+	pending string
+	readErr error
+
+	writer *bufio.Writer
 }
 
-func (c *ircConn) Read(b []byte) (n int, err error) {
-	if c.reader == nil {
-		c.reader = bufio.NewReader(c.Conn)
+func (c *ircConn) Read(b []byte) (int, error) {
+	c.readMu.Lock()
+	defer c.readMu.Unlock()
+
+	if len(b) == 0 {
+		return 0, nil
 	}
 
-	line, err := c.reader.ReadString('\n')
+	// Finish returning a previously inspected line before reading another.
+	if c.pending != "" {
+		n := copy(b, c.pending)
+		c.pending = c.pending[n:]
+		return n, nil
+	}
+
+	// An oversized or interrupted partial line cannot be safely resumed.
+	if c.readErr != nil {
+		return 0, c.readErr
+	}
+
+	if c.reader == nil {
+		c.reader = bufio.NewReaderSize(c.Conn, ircMaxLineLength)
+	}
+
+	// ReadSlice stops when it finds '\n' or fills the fixed-size buffer.
+	// Unlike ReadString, it does not accumulate an unlimited line.
+	line, err := c.reader.ReadSlice('\n')
 	if err != nil {
+		if errors.Is(err, bufio.ErrBufferFull) {
+			c.readErr = ErrLineTooLong
+			return 0, c.readErr
+		}
+
+		if len(line) > 0 {
+			// The partial line was consumed. Do not forward it or treat its
+			// remainder as a new line on a later Read.
+			c.readErr = err
+		}
 		return 0, err
 	}
 
-	msg, err := parseMessage(line)
+	// ReadSlice's bytes belong to the reader. Copy them into a string before
+	// another read can overwrite its buffer.
+	raw := string(line)
+	modified := raw
+
+	msg, err := parseMessage(raw)
 	if err != nil {
 		c.inspector.config.Logger.Error("parse error: %v", err)
-		copy(b, line)
-		return len(line), nil
+	} else {
+		if err := c.inspector.processMessage(msg); err != nil {
+			c.inspector.config.Logger.Error("process error: %v", err)
+		}
+		modified = msg.String()
 	}
 
-	if err := c.inspector.processMessage(msg); err != nil {
-		c.inspector.config.Logger.Error("process error: %v", err)
-	}
-
-	modified := msg.String()
-	copy(b, modified)
-	return len(modified), nil
+	// The caller can provide a buffer smaller than a valid IRC line.
+	// Return only the bytes copied and retain the rest for the next call.
+	n := copy(b, modified)
+	c.pending = modified[n:]
+	return n, nil
 }
 
 func (c *ircConn) Write(b []byte) (n int, err error) {
